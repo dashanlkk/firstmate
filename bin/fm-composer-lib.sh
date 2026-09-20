@@ -68,12 +68,15 @@
 #                closing border, holding the idle hint, blank rows, and a
 #                mode/model footer line.
 #   separated  - pi: content rows between two solid horizontal `─` rules, no
-#                side border. Composer rows are REAL INPUT ONLY. The
+#                side border. Apart from the first-row prompt, composer rows
+#                are REAL INPUT ONLY. The
 #                composer's own first row carries pi's prompt glyph `>`
 #                (declared once below as FM_COMPOSER_PI_PROMPT_GLYPHS), so a
-#                pair whose rows hold nothing but that glyph - with or without
-#                the reverse-video cursor cell a terminal draws on it - is the
-#                EMPTY composer and never typed input. Everything pi draws
+#                pair with only that glyph on its first row - with or without
+#                the reverse-video cursor cell - and otherwise blank rows is
+#                EMPTY. A literal `>` on any subsequent row is pending input,
+#                as are other glyphs or text anywhere inside the pair.
+#                Everything pi draws
 #                about its own state stays OUTSIDE the pair: queued
 #                `Steering:`/`Follow-up:` messages and the
 #                `↳ <key> to edit all queued messages` hint render above the
@@ -86,10 +89,12 @@
 #
 # THE SAFETY RULE for glyphs: a bare shell prompt glyph (`>` `$` `%` `#`) -
 # what a pane shows once its agent has exited to a plain login shell - is a
-# genuine empty agent composer ONLY inside a bordered container. On a bare row
+# genuine empty agent composer inside a bordered container, with the narrower
+# Pi separated-shape exception defined above. On a bare row
 # it is a dead-shell prompt and classifies `unknown` (never a safe injection
 # target). The AGENT glyphs `❯` (claude), `›` (codex), `⟩` (U+27E9, muse),
-# and `→` (U+2192, cursor) are a genuine empty agent composer either way.
+# and `→` (U+2192, cursor) are a genuine empty agent composer in a bordered
+# box or on a bare prompt row; Pi's separated shape uses its own rule above.
 # Both glyph sets are declared
 # exactly once below; every decision reaches them through the declarations.
 #
@@ -410,21 +415,14 @@ fm_busy_lines_match() {  # [harness]
 }
 
 # The prompt glyphs, each declared exactly once (see THE SAFETY RULE above).
-# AGENT glyphs are a genuine empty agent composer on any row, bordered or bare.
-# SHELL glyphs are one only INSIDE a composer container; on a bare row they are
-# a dead-shell prompt and must never read `empty`. Newline-separated and
+# Newline-separated and
 # consumed by `read` rather than word splitting, so `$`, `%`, and `#` stay
 # literal and no entry is ever exposed to pathname expansion.
 FM_COMPOSER_AGENT_PROMPT_GLYPHS=$(printf '%s\n' '❯' '›' '⟩' '→')
 FM_COMPOSER_SHELL_PROMPT_GLYPHS=$(printf '%s\n' '>' '$' '%' '#')
 
-# The ONE glyph pi draws as its OWN composer prompt (pi 0.86.1, verified live;
-# the pi bundle carries no other agent glyph). It is literally a member of the
-# shell set above, so it can never be decided by list membership: OUTSIDE a pi
-# separated pair `>` is the dead-shell rule's `unknown`, while INSIDE one it is
-# the harness prompt and proves an EMPTY composer. Keeping it a separate
-# singleton lets pi's composer row be recognized without ever widening that
-# rule to `$`, `%`, or `#`, which stay real input between pi's rules.
+# Keep Pi's prompt set separate from the shell set so additions to the latter
+# cannot widen the separated-shape exception documented above.
 FM_COMPOSER_PI_PROMPT_GLYPHS=$(printf '%s\n' '>')
 
 # The ONE fleet-wide idle-placeholder set: composer text a harness renders in
@@ -1536,14 +1534,8 @@ fm_composer_queued_enter_verdict() {  # <composer-state> <busy|idle|unknown>
   fi
 }
 
-# Only pi draws its own prompt glyph inside the pair, so a row that is nothing
-# but that glyph is the empty composer rather than typed input. Without this,
-# an idle pi pane reads `pending` forever (pi always draws `>` and the cursor
-# cell in its composer), which silently defeats every relaunch - the only way
-# to revive a worker whose model login died (verified live 2026-09-20, pi
-# 0.86.1 through herdr: `herdr agent get` reported `done` while this classifier
-# said `pending`). Any row carrying MORE than the glyph stays `pending`, and a
-# lone agent glyph (`❯`) is still a draft, so nothing else changes.
+# The separated-shape contract above is pinned by
+# test_matrix_pi_prompt_glyph_row_is_empty in tests/fm-composer-lib.test.sh.
 _fm_composer_classify_pi_rows() {  # <screen> <styled>
   local screen=$1 styled=$2 row raw content
   row=$((FM_COMPOSER_SCAN_PI_OPEN + 1))
