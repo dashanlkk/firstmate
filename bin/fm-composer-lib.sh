@@ -68,7 +68,17 @@
 #                closing border, holding the idle hint, blank rows, and a
 #                mode/model footer line.
 #   separated  - pi: content rows between two solid horizontal `─` rules, no
-#                glyph and no side border. Provable only with a live agent
+#                side border. Composer rows are REAL INPUT ONLY. The
+#                composer's own first row carries pi's prompt glyph `>`
+#                (declared once below as FM_COMPOSER_PI_PROMPT_GLYPHS), so a
+#                pair whose rows hold nothing but that glyph - with or without
+#                the reverse-video cursor cell a terminal draws on it - is the
+#                EMPTY composer and never typed input. Everything pi draws
+#                about its own state stays OUTSIDE the pair: queued
+#                `Steering:`/`Follow-up:` messages and the
+#                `↳ <key> to edit all queued messages` hint render above the
+#                status line, and the `↳ <last submitted prompt>` echo row
+#                renders below the bottom rule. Provable only with a live agent
 #                identity reporting an idle/done pi (herdr `agent
 #                get`; the tmux foreground-process probe), because a blank
 #                region between two transcript rules is otherwise exactly the
@@ -407,6 +417,15 @@ fm_busy_lines_match() {  # [harness]
 # literal and no entry is ever exposed to pathname expansion.
 FM_COMPOSER_AGENT_PROMPT_GLYPHS=$(printf '%s\n' '❯' '›' '⟩' '→')
 FM_COMPOSER_SHELL_PROMPT_GLYPHS=$(printf '%s\n' '>' '$' '%' '#')
+
+# The ONE glyph pi draws as its OWN composer prompt (pi 0.86.1, verified live;
+# the pi bundle carries no other agent glyph). It is literally a member of the
+# shell set above, so it can never be decided by list membership: OUTSIDE a pi
+# separated pair `>` is the dead-shell rule's `unknown`, while INSIDE one it is
+# the harness prompt and proves an EMPTY composer. Keeping it a separate
+# singleton lets pi's composer row be recognized without ever widening that
+# rule to `$`, `%`, or `#`, which stay real input between pi's rules.
+FM_COMPOSER_PI_PROMPT_GLYPHS=$(printf '%s\n' '>')
 
 # The ONE fleet-wide idle-placeholder set: composer text a harness renders in
 # an EMPTY composer that a plain capture cannot tell from typed text. Grok's
@@ -1517,6 +1536,14 @@ fm_composer_queued_enter_verdict() {  # <composer-state> <busy|idle|unknown>
   fi
 }
 
+# Only pi draws its own prompt glyph inside the pair, so a row that is nothing
+# but that glyph is the empty composer rather than typed input. Without this,
+# an idle pi pane reads `pending` forever (pi always draws `>` and the cursor
+# cell in its composer), which silently defeats every relaunch - the only way
+# to revive a worker whose model login died (verified live 2026-09-20, pi
+# 0.86.1 through herdr: `herdr agent get` reported `done` while this classifier
+# said `pending`). Any row carrying MORE than the glyph stays `pending`, and a
+# lone agent glyph (`❯`) is still a draft, so nothing else changes.
 _fm_composer_classify_pi_rows() {  # <screen> <styled>
   local screen=$1 styled=$2 row raw content
   row=$((FM_COMPOSER_SCAN_PI_OPEN + 1))
@@ -1524,7 +1551,8 @@ _fm_composer_classify_pi_rows() {  # <screen> <styled>
     raw=$(_fm_composer_screen_row "$row" "$screen")
     content=$(_fm_composer_row_content "$raw" "$styled")
     fm_composer_normalize_trim_var content
-    if [ -n "$content" ]; then
+    if [ -n "$content" ] \
+       && ! _fm_composer_is_prompt_glyph "$content" "$FM_COMPOSER_PI_PROMPT_GLYPHS"; then
       printf 'pending'
       return 0
     fi
