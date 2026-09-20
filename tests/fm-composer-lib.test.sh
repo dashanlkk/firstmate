@@ -496,7 +496,7 @@ test_matrix_pi_prompt_glyph_row_is_empty() {
   # which silently defeated every relaunch - the only way to revive a worker
   # whose model login had died. Only the glyph row is composer input; the echo
   # row below the pair and pi's queue furniture above the status line are not.
-  local rule prompt_row echo_row idle queued draft pi_idle
+  local rule prompt_row echo_row idle queued draft pi_idle continuation
   rule='────────────────────────'
   prompt_row="${ESC}[0m${ESC}[38;2;200;200;200m>${ESC}[0m ${ESC}[0m${ESC}[7m ${ESC}[0m"
   echo_row="  ${ESC}[0m${ESC}[38;5;244m↳${ESC}[0m ${ESC}[0m${ESC}[38;5;244mFIRSTMATE_OP: v1 launch-brief: teach the worker${ESC}[0m"
@@ -517,6 +517,11 @@ test_matrix_pi_prompt_glyph_row_is_empty() {
     "${ESC}[0m${ESC}[38;2;200;200;200m>${ESC}[0m fix the flaky test" "$rule" "$echo_row")
   assert_screen "pi prompt glyph with a real draft stays pending" pending "$CAPS_STYLED" "$draft" '' "$pi_idle"
   assert_screen "pi prompt glyph with a real draft on tmux" pending "$CAPS_TMUX" "$draft" 2 "$pi_idle"
+  for continuation in $'  >' $'  \n  >'; do
+    draft=$(printf '%s\n' 'transcript line' "$rule" "$prompt_row" "$continuation" "$rule" "$echo_row")
+    assert_screen "pi blank first input row followed by literal > stays pending" pending "$CAPS_STYLED" "$draft" '' "$pi_idle"
+    assert_screen "pi literal > on a continuation row stays pending on tmux" pending "$CAPS_TMUX" "$draft" 3 "$pi_idle"
+  done
   # Only an idle/done identity proves emptiness; a working pi still defers.
   assert_screen "working pi with a prompt-glyph composer defers" unknown \
     "$CAPS_STYLED" "$idle" '' "$(printf 'pi\tworking')"

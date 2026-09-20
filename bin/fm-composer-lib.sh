@@ -1552,7 +1552,8 @@ _fm_composer_classify_pi_rows() {  # <screen> <styled>
     content=$(_fm_composer_row_content "$raw" "$styled")
     fm_composer_normalize_trim_var content
     if [ -n "$content" ] \
-       && ! _fm_composer_is_prompt_glyph "$content" "$FM_COMPOSER_PI_PROMPT_GLYPHS"; then
+       && { [ "$row" -ne "$((FM_COMPOSER_SCAN_PI_OPEN + 1))" ] \
+         || ! _fm_composer_is_prompt_glyph "$content" "$FM_COMPOSER_PI_PROMPT_GLYPHS"; }; then
       printf 'pending'
       return 0
     fi
