@@ -83,10 +83,8 @@ It is not deterministic across the verified adapters: codex, grok, gemini, and d
 
 Switching harness is therefore one ordinary relaunch rather than a separate mechanism.
 
-Per-task activity reporting is bound by that launch rather than held in the task record: `bin/fm-spawn.sh` writes the busy generation together with that harness's wiring, in one of three forms.
-The first is a worktree-resident hook the harness re-reads on any start there - Claude's `.claude/settings.local.json` and OpenCode's plugin - so a resumed session or recovered pane in that worktree keeps reporting.
-The second is Grok's and Kimi's, whose hook lives outside the worktree as a single global entry that fires only while the worktree's pointer names a firstmate-owned token; those paths belong to `fm_control_harness_turnend_token_path` and `fm_control_harness_turnend_auth_path` in [`bin/fm-control-lib.sh`](../bin/fm-control-lib.sh) rather than to its wiring table, and they outlive a passive reopen too.
-The third travels inside the launch command itself - Pi's `-e <state>/<id>.pi-ext.ts` and `omp`'s twin, Gemini's and Devin's injected settings files, and Codex's notifier - so an agent process started without replaying that recorded launch command reports nothing at all while its work continues normally, and current-state reads then have only the process and the terminal left to go on.
+Per-task activity reporting is bound by that launch rather than held in the task record: `bin/fm-spawn.sh` writes the busy generation together with that harness's wiring, and [`bin/fm-control-lib.sh`](../bin/fm-control-lib.sh) owns which paths each form leaves behind.
+Wiring the harness reads back for itself out of the worktree outlives a passive reopen, while wiring carried on the launch command - an extension flag, an injected settings file, a notifier - reaches only the process that command started, so an agent started without replaying it reports nothing at all while its work continues normally and current-state reads then have only the process and the terminal left to go on.
 There the repair is a `relaunch` and never a passive reopen, and a per-task extension file's mtime is the launch timestamp rather than evidence that reporting is alive.
 
 ### Reclaiming a task whose endpoint is gone
