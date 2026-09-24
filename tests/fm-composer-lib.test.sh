@@ -672,18 +672,23 @@ test_matrix_pi_prompt_row_is_editor_furniture() {
   assert_screen "pi queued tail note plus a real draft stays pending" pending "$CAPS_STYLED" "$typed" '' "$pi_idle"
   # The same boundary read where it can actually break: the extraction consumer
   # that answers "what does this composer hold?" must scope itself to the pair
-  # and never to the queued rows. If a queued row were ever selected as the
-  # composer, this is the assertion that would fail. pi's own prompt row is
-  # deliberately NOT stripped here: this extraction feeds
-  # fm_task_inbox_composer_holds' exact-match check, and a `>`-prefixed row can
-  # never equal the doorbell line, so keeping it strict is the safe direction.
+  # and never to the queued rows, and it must strip the editor's own prompt
+  # glyph the classification side treats as furniture. If a queued row were ever
+  # selected as the composer, this is the assertion that would fail; if the
+  # prompt glyph survived, the exact-match doorbell consumer
+  # (fm_task_inbox_composer_holds) could never match our own doorbell line.
   selected=$(fm_composer_extract_selected_content "$CAPS_STYLED" "$queued")
-  [ "$selected" = '>' ] \
-    || fail "the pi composer selection should be the prompt row alone, got '$selected'"
+  [ -z "$selected" ] \
+    || fail "an idle pi composer holding only its prompt glyph should extract to empty content, got '$selected'"
   case "$selected" in
     *Steering:*|*launch-brief/queued*|*"to edit all queued messages"*)
       fail "a queued-message row was selected as composer content: '$selected'" ;;
   esac
+  # The complement that makes the doorbell consumer reachable: a real line on
+  # the editor's prompt row extracts to exactly that line.
+  selected=$(fm_composer_extract_selected_content "$CAPS_STYLED" "$typed")
+  [ "$selected" = 'fix the flaky test' ] \
+    || fail "a pi composer holding a real line should extract it exactly, got '$selected'"
   # PROTECTION, unchanged and never relaxed: real input renders AFTER the glyph
   # on the SAME row (measured live), so it is not the prompt row any more.
   typed=$'transcript\n────────────────────────\n> fix the flaky test\n────────────────────────\n footer'

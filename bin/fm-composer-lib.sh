@@ -583,6 +583,13 @@ EOF
   return 1
 }
 
+# 0 when <content> is exactly one SHELL prompt glyph. The lone-shell-glyph-is-
+# furniture decision is owned here so the shared content verdict and pi's
+# editor-prompt predicate both reference it instead of respelling it.
+_fm_composer_is_shell_prompt_glyph() {  # <content>
+  _fm_composer_is_prompt_glyph "$1" "$FM_COMPOSER_SHELL_PROMPT_GLYPHS"
+}
+
 # fm_composer_leading_prompt_glyph_var: set <out-varname> to the ONE prompt
 # glyph <content> begins with once its leading whitespace is ignored, or to the
 # empty string (returning 1) when it begins with none. Both glyph lists are
@@ -680,7 +687,7 @@ fm_composer_classify_content() {  # <bordered> <content> [idle_re] [idle_case] [
   if _fm_composer_is_prompt_glyph "$content" "$FM_COMPOSER_AGENT_PROMPT_GLYPHS"; then
     printf 'empty'; return 0
   fi
-  if _fm_composer_is_prompt_glyph "$content" "$FM_COMPOSER_SHELL_PROMPT_GLYPHS"; then
+  if _fm_composer_is_shell_prompt_glyph "$content"; then
     if [ "$bordered" = 1 ]; then printf 'empty'; else printf 'unknown'; fi
     return 0
   fi
@@ -767,8 +774,15 @@ _fm_composer_pi_separator_row() {  # <trimmed-row>
   return 1
 }
 
-# _fm_composer_row_is_pi_prompt_row: 0 when <content> is nothing but the pi
-# editor's own prompt glyph - composer FURNITURE, never typed text.
+# _fm_composer_row_is_pi_prompt_row: 0 when <content> is composer FURNITURE by
+# the shared lone-shell-glyph rule - nothing but the pi editor's own prompt
+# glyph on the row, never typed text. That rule lives once
+# (`_fm_composer_is_shell_prompt_glyph`, referenced by
+# `fm_composer_classify_content` too), so this stays a single-point reference
+# to it and not a second owner. The pi path deliberately does NOT reuse the
+# whole content verdict: an AGENT glyph on the pair's first row is still a
+# draft here (locked by the pi separated-shape matrix), which the generic
+# verdict would read as furniture.
 #
 # pi draws its editor as a bordered box (a solid `─` rule, one input row, then
 # another solid `─` rule - the separator pair above), and that input row leads
@@ -776,24 +790,23 @@ _fm_composer_pi_separator_row() {  # <trimmed-row>
 # 0.87.1: the glyph carries truecolor fg 200,200,200, well above the ghost
 # threshold, so ghost stripping kept it and a genuinely idle, empty composer
 # read `pending` - the single verdict that skips a steer's doorbell, reports a
-# submit unconfirmed, and refuses fm-control's exit command. Nothing else on
-# that row is the prompt: real input renders AFTER the glyph on the same row
-# (`> fix the flaky test`), so any draft whose first line carries text fails
-# this test and stays pending.
+# submit unconfirmed, and refuses fm-control's exit command. Real input renders
+# AFTER the glyph on the same row (`> fix the flaky test`), so a draft whose
+# first line carries text is not furniture and stays pending.
 #
 # It moves a verdict toward `empty`, which the file's asymmetry permits only
 # with proof. The proof is entirely local and the caller supplies the half of
-# it the row cannot: the predicate itself proves NOTHING BUT THE GLYPH IS ON
-# THE ROW, and `_fm_composer_classify_pi_rows` calls it on the separator pair's
-# FIRST inner row alone, which is where pi draws its editor input line. That is
-# a pi shape fact, not a row-level identity proof - `>` is a SHELL glyph, so
-# the scan's recorded glyph proof (FM_COMPOSER_SCAN_PI_GLYPH_ROW) can never
-# carry this row and is not consulted here. A bare glyph on any LATER row is a
+# it the row cannot: the predicate proves NOTHING BUT THE GLYPH IS ON THE ROW,
+# and `_fm_composer_classify_pi_rows` applies it to the separator pair's FIRST
+# inner row alone, which is where pi draws its editor input line. That is a pi
+# shape fact, not a row-level identity proof - `>` is a SHELL glyph, so the
+# scan's recorded glyph proof (FM_COMPOSER_SCAN_PI_GLYPH_ROW) can never carry
+# this row and is not consulted here. A bare glyph on any LATER row is a
 # continuation line the operator typed, and the caller never exempts one.
 _fm_composer_row_is_pi_prompt_row() {  # <content>
   local content=$1
   fm_composer_normalize_trim_var content
-  _fm_composer_is_prompt_glyph "$content" "$FM_COMPOSER_SHELL_PROMPT_GLYPHS"
+  _fm_composer_is_shell_prompt_glyph "$content"
 }
 
 # Row-scan results are returned through FM_COMPOSER_SCAN_* globals (bash 3.2
@@ -1609,12 +1622,21 @@ EOF
            && fm_composer_leading_prompt_glyph_var glyph "$content"; then
           prompt_row=$row
           placeholder_position=1
-          if _fm_composer_is_prompt_glyph "$glyph" "$FM_COMPOSER_SHELL_PROMPT_GLYPHS"; then
+          if _fm_composer_is_shell_prompt_glyph "$glyph"; then
             prompt_is_shell=1
           fi
           content=${content#*"$glyph"}
         elif [ "$prompt_row" -lt 0 ]; then
           placeholder_position=1
+        fi
+        ;;
+      pi)
+        if [ "$row" -eq "$FM_COMPOSER_SELECTED_FIRST" ]; then
+          if _fm_composer_row_is_pi_prompt_row "$content"; then
+            content=''
+          elif fm_composer_leading_shell_glyph_var glyph "$content"; then
+            content=${content#*"$glyph"}
+          fi
         fi
         ;;
     esac
