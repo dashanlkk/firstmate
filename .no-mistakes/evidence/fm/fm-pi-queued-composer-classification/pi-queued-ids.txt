@@ -1,0 +1,8 @@
+live pi identity (fm_tmux_composer_identity), idle composer:
+pi	idle
+
+live pi identity, busy turn with queued message:
+pi	idle
+
+pi --version: 0.87.1
+tmux: tmux 3.4
