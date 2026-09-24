@@ -690,7 +690,7 @@ Observed output on 2026-09-24, before the Pi prompt-row fix (the Pi arm of that 
 not ok - pi (0.87.1): idle composer never classified empty (last verdict: pending)
 ```
 
-Pi 0.87.1 draws its editor as a bordered box whose single input row leads with the harness's shell prompt glyph at full brightness (truecolor fg 200,200,200, above the ghost threshold), so ghost stripping kept it and the genuinely idle, empty composer read `pending` - the one verdict that skips a steer's doorbell, reports a submit unconfirmed, and refuses fm-control's exit command.
+Pi 0.87.1 draws its editor as the separator pair whose single input row leads with the harness's shell prompt glyph at full brightness (truecolor fg 200,200,200, above the ghost threshold), so ghost stripping kept it and the genuinely idle, empty composer read `pending` - the one verdict that skips a steer's doorbell, reports a submit unconfirmed, and refuses fm-control's exit command.
 `_fm_composer_classify_pi_rows` now treats the pair's FIRST row alone as the editor's own input line, exempting it only when nothing but that prompt glyph is on it; real input renders after the glyph on the same row and every later row still keeps its verdict, which is what holds the PR #5040 R1 multiline-draft boundary.
 The same run after the fix:
 

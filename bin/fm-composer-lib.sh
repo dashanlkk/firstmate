@@ -133,9 +133,12 @@
 #
 # THE SAFETY RULE for glyphs: a bare shell prompt glyph (`>` `$` `%` `#`) -
 # what a pane shows once its agent has exited to a plain login shell - is a
-# genuine empty agent composer ONLY inside a bordered container. On a bare row
-# it is a dead-shell prompt and classifies `unknown` (never a safe injection
-# target). The AGENT glyphs `❯` (claude), `›` (codex), `⟩` (U+27E9, muse),
+# genuine empty agent composer ONLY inside a positively identified composer
+# container: the bordered box, or pi's identity-proven separator pair, whose
+# FIRST inner row alone is the editor's own prompt line
+# (`_fm_composer_row_is_pi_prompt_row`). On a bare row outside one it is a
+# dead-shell prompt and classifies `unknown` (never a safe injection target).
+# The AGENT glyphs `❯` (claude), `›` (codex), `⟩` (U+27E9, muse),
 # `→` (U+2192, cursor), and `❭` (U+276D, devin) are a genuine empty agent
 # composer either way.
 # Both glyph sets are declared
@@ -784,8 +787,8 @@ _fm_composer_pi_separator_row() {  # <trimmed-row>
 # draft here (locked by the pi separated-shape matrix), which the generic
 # verdict would read as furniture.
 #
-# pi draws its editor as a bordered box (a solid `─` rule, one input row, then
-# another solid `─` rule - the separator pair above), and that input row leads
+# pi draws its editor as the separator pair above (a solid `─` rule, one input
+# row, then another solid `─` rule), and that input row leads
 # with the harness's shell prompt glyph at FULL brightness. Measured live on pi
 # 0.87.1: the glyph carries truecolor fg 200,200,200, well above the ghost
 # threshold, so ghost stripping kept it and a genuinely idle, empty composer
