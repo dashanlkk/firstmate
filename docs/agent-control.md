@@ -83,6 +83,10 @@ It is not deterministic across the verified adapters: codex, grok, gemini, and d
 
 Switching harness is therefore one ordinary relaunch rather than a separate mechanism.
 
+Per-task activity reporting is bound by that launch, not held in the task record: `bin/fm-spawn.sh` writes the busy generation and the generated per-task extension and hands them to the harness at startup - Pi as an explicit `-e <state>/<id>.pi-ext.ts` launch argument, other harnesses through the per-task file their adapter loads, whose paths [`bin/fm-control-lib.sh`](../bin/fm-control-lib.sh) owns.
+An agent process that starts without replaying that recorded launch command - a resumed session, a recovered pane, or an agent started by hand in the endpoint - runs with no reporting wiring at all while its work continues normally, and current-state reads then have only the process and the terminal left to go on.
+The repair is therefore a `relaunch` and never a passive reopen, and a per-task extension file's mtime is the launch timestamp rather than evidence that reporting is alive.
+
 ### Reclaiming a task whose endpoint is gone
 
 A Herdr pane or workspace can be destroyed out from under a live task by churn or a session restart.
