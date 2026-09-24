@@ -585,11 +585,13 @@ test_matrix_pi_separated_needs_identity() {
   # exactly what the strict rule refuses; only structure PLUS a live
   # idle/done pi identity proves the composer (herdr's rule, now
   # fleet-wide; tmux supplies identity from its foreground-process probe).
-  # The blank input row is the shape this catalogue was first verified against,
-  # on pi 0.84.0; pi 0.87.1 fills that same row with its prompt glyph, pinned by
-  # test_matrix_pi_prompt_row_is_editor_furniture below. Both are real, so both
-  # stay green: this case owns "the region's content alone is never proof", that
-  # one owns "the prompt row is furniture".
+  # The blank input row here is the other idle shape the identity rule owns: a
+  # pair whose region carries nothing at all. That is the fixture this case
+  # needs, and pi 0.87.1 is the reason the other fixture exists - it fills the
+  # same row with its prompt glyph, pinned by
+  # test_matrix_pi_prompt_row_is_editor_furniture below. Both stay green because
+  # they answer different questions: this case owns "the region's content alone
+  # is never proof", that one owns "the prompt row is furniture".
   local screen typed pi_idle pi_working pi_blocked none
   screen=$'transcript\n────────────────────────\n\n────────────────────────\n footer'
   pi_idle=$(printf 'pi\tidle'); pi_working=$(printf 'pi\tworking'); none=$(printf 'zsh\t')
