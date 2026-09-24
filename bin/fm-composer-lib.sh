@@ -68,15 +68,29 @@
 #                closing border, holding the idle hint, blank rows, and a
 #                mode/model footer line.
 #   separated  - pi: content rows between two solid horizontal `─` rules, no
-#                glyph and no side border. Provable only with a live agent
-#                identity reporting an idle/done pi (herdr `agent
-#                get`; the tmux foreground-process probe), because a blank
-#                region between two transcript rules is otherwise exactly the
-#                strict rule's unidentifiable blank row.
+#                side border. pi draws its editor as exactly that box, and the
+#                pair's FIRST inner row is the editor's own input line, which
+#                leads with pi's SHELL prompt glyph `>` (pi 0.87.1, measured
+#                live) or, on the older 0.84.0 builds this catalogue was first
+#                verified on, is blank until the operator types. Real input
+#                renders on that same row after the glyph. Provable only with
+#                a live agent identity reporting an idle/done pi (herdr
+#                `agent get`; the tmux foreground-process probe), because a
+#                blank region between two transcript rules is otherwise
+#                exactly the strict rule's unidentifiable blank row.
 #                A separated pair that closes over a bare AGENT-GLYPH row is a
 #                different, self-proving thing: real claude 2.x draws exactly
 #                that (`─` rule, `❯`+NBSP, `─` rule), so the glyph inside the
 #                pair carries the shape and no identity is needed.
+#                This shape's own row rules are pi-adapter knowledge and live
+#                with it, beside `_fm_composer_pi_separator_row`: the separator
+#                pair itself, and the first-row prompt-glyph furniture
+#                `_fm_composer_row_is_pi_prompt_row` owns. They are NOT part of
+#                the shared FURNITURE family below, which answers "may this row
+#                bound the footer zone?" for every harness at once; the scan's
+#                recorded glyph proof (`FM_COMPOSER_SCAN_PI_GLYPH_ROW`) cannot
+#                carry the prompt row either, because `>` is deliberately
+#                outside the AGENT glyph set the scan proves with.
 #
 # THE COMPOSER FOOTER ZONE (task firstmate-doorbell-vals-pending-p1): a
 # harness draws its own furniture BELOW the composer - a user statusLine, a
@@ -1321,8 +1335,10 @@ _fm_composer_leftbar_floor_row() {  # <trimmed-row>
 
 # _fm_composer_row_is_composer_furniture: 0 when <trimmed-row> is DEMONSTRABLY
 # a harness's own furniture drawn below its composer, given <proof-glyph> - the
-# agent glyph that proved the envelope above it. Exactly four things qualify,
-# every one of them already owned elsewhere in this file:
+# agent glyph that proved the envelope above it. This is the FOOTER ZONE's
+# question ("may this row bound the zone under a proven envelope?"), not a
+# file-wide list of every furniture row: it admits exactly four things, each
+# owned elsewhere in this file and each safe to bound that zone -
 #   - omp's status row and braille-only animation rows, the two furniture rows
 #     that already bound a bare composer's wrap region;
 #   - claude's permission-mode hint row (FM_COMPOSER_MODE_HINT_RE_DEFAULT);
@@ -1334,6 +1350,11 @@ _fm_composer_leftbar_floor_row() {  # <trimmed-row>
 # a row leading with the SAME glyph the envelope was proven by (`❯ my typed
 # draft`, which is a live composer) - is NOT furniture, so the envelope above
 # it stays stale and the verdict stays a refusal.
+# A row carrying nothing but a SHELL glyph is deliberately absent from that
+# list as well: below a composer it is a dead shell's prompt, which the footer
+# zone must keep refusing. pi's editor prompt row is that same glyph INSIDE the
+# composer, so it is the pi adapter's own shape knowledge
+# (_fm_composer_row_is_pi_prompt_row) and never reaches this aggregator.
 _fm_composer_row_is_composer_furniture() {  # <trimmed-row> <proof-glyph>
   local row=$1 proof=$2 glyph=''
   [ -n "$row" ] || return 1
@@ -1747,13 +1768,48 @@ fm_composer_queued_enter_verdict() {  # <composer-state> <busy|idle|unknown>
   fi
 }
 
+# _fm_composer_row_is_pi_prompt_row: 0 when <content> is nothing but the pi
+# editor's own prompt glyph - composer FURNITURE, never typed text.
+#
+# pi draws its editor as a bordered box (a solid `─` rule, one input row, then
+# another solid `─` rule - the separator pair this classifier owns), and that
+# input row leads with the harness's shell prompt glyph at FULL brightness.
+# Measured live on pi 0.87.1: the glyph carries truecolor fg 200,200,200, well
+# above the ghost threshold, so ghost stripping kept it and a genuinely idle,
+# empty composer read `pending` - the single verdict that skips a steer's
+# doorbell, reports a submit unconfirmed, and refuses fm-control's exit
+# command. Nothing else on that row is the prompt: real input renders AFTER the
+# glyph on the same row (`> fix the flaky test`), so any draft whose first line
+# carries text fails this test and stays pending.
+#
+# It moves a verdict toward `empty`, which the file's asymmetry permits only
+# with proof. The proof is entirely local and the caller supplies the half of
+# it the row cannot: the predicate itself proves NOTHING BUT THE GLYPH IS ON
+# THE ROW, and `_fm_composer_classify_pi_rows` calls it on the separator pair's
+# FIRST inner row alone, which is where pi draws its editor input line. That is
+# a pi shape fact, not a row-level identity proof - `>` is a SHELL glyph, so
+# the scan's recorded glyph proof (FM_COMPOSER_SCAN_PI_GLYPH_ROW) can never
+# carry this row and is not consulted here. A bare glyph on any LATER row is a
+# continuation line the operator typed, and the caller never exempts one.
+_fm_composer_row_is_pi_prompt_row() {  # <content>
+  local content=$1
+  fm_composer_normalize_trim_var content
+  _fm_composer_is_prompt_glyph "$content" "$FM_COMPOSER_SHELL_PROMPT_GLYPHS"
+}
+
 _fm_composer_classify_pi_rows() {  # <screen> <styled>
-  local screen=$1 styled=$2 row raw content
+  local screen=$1 styled=$2 row raw content first=1
   row=$((FM_COMPOSER_SCAN_PI_OPEN + 1))
   while [ "$row" -lt "$FM_COMPOSER_SCAN_PI_CLOSE" ]; do
     raw=$(_fm_composer_screen_row "$row" "$screen")
     content=$(_fm_composer_row_content "$raw" "$styled")
     fm_composer_normalize_trim_var content
+    # Only the pair's FIRST row is the editor's input line; see
+    # _fm_composer_row_is_pi_prompt_row.
+    if [ "$first" = 1 ] && _fm_composer_row_is_pi_prompt_row "$content"; then
+      content=''
+    fi
+    first=0
     if [ -n "$content" ]; then
       printf 'pending'
       return 0
